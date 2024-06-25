@@ -19,6 +19,16 @@ import PropTypes from "prop-types";
 import * as React from "react";
 import { useEffect, useState } from "react";
 import users from "../../main.module.css";
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  TextField,
+} from "@mui/material";
+import { Controller, useForm } from "react-hook-form";
+import { Delete, Edit } from "@mui/icons-material";
 
 function TablePaginationActions(props) {
   const theme = useTheme();
@@ -94,6 +104,49 @@ export default function UserDashboard() {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [editUserId, setEditUserId] = useState(null);
+  const { handleSubmit, control, reset } = useForm();
+
+  const handleEdit = (userId) => {
+    setEditUserId(userId);
+    setOpenEditDialog(true);
+    reset(user);
+  };
+
+  const handleDelete = (userId) => {
+    (async () => {
+      try {
+        const delete_user = await axios.delete(
+          `http://localhost:5000/api/users/${userId}`
+        );
+        console.log("Deleted User", delete_user.data);
+      } catch (err) {
+        console.error("Error Deleting User!", err);
+      }
+    })();
+  };
+
+  const handleCloseEditDialog = () => {
+    setOpenEditDialog(false);
+    setEditUserId(null);
+    reset();
+  };
+
+  const onSubmit = (formData) => {
+    (async () => {
+      try {
+        const edit_user = await axios.put(
+          `http://localhost:5000/api/users/${formData.id}`,
+          { ...formData }
+        );
+        console.log("Successfully Edited User!", edit_user.data);
+      } catch (err) {
+        console.error("Error Updating User!", err);
+      }
+    })();
+    handleCloseEditDialog();
+  };
 
   const emptyRows =
     page > 0 ? Math.max(0, (1 + page) * rowsPerPage - userData.length) : 0;
@@ -133,7 +186,7 @@ export default function UserDashboard() {
       </h1>
       <TableContainer component={Paper}>
         {loading ? (
-          <h6>Loading the uesr data....</h6>
+          <h6>Loading the user data....!</h6>
         ) : (
           <Table sx={{ minWidth: 500 }} aria-label="user-dashboard">
             <TableHead>
@@ -164,6 +217,14 @@ export default function UserDashboard() {
                   <TableCell style={{ width: 160 }}>{row.username}</TableCell>
                   <TableCell style={{ width: 160 }}>
                     {row.profile_picture}
+                  </TableCell>
+                  <TableCell>
+                    <IconButton onClick={() => handleEdit(row.id)}>
+                      <Edit />
+                    </IconButton>
+                    <IconButton onClick={() => handleDelete(row.id)}>
+                      <Delete />
+                    </IconButton>
                   </TableCell>
                 </TableRow>
               ))}
@@ -198,6 +259,36 @@ export default function UserDashboard() {
           </Table>
         )}
       </TableContainer>
+
+      <Dialog open={openEditDialog} onClose={handleCloseEditDialog}>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <DialogTitle>Edit User</DialogTitle>
+          <DialogContent>
+            <Controller
+              name="name"
+              control={control}
+              defaultValue=""
+              render={({ field }) => (
+                <TextField {...field} label="Name" fullWidth />
+              )}
+            />
+            <Controller
+              name="email"
+              control={control}
+              defaultValue=""
+              render={({ field }) => (
+                <TextField {...field} label="Email" fullWidth />
+              )}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseEditDialog}>Cancel</Button>
+            <Button type="submit" variant="contained" color="primary">
+              Save
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
     </React.Fragment>
   );
 }
